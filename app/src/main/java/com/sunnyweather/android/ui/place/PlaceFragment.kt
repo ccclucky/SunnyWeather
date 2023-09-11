@@ -1,6 +1,11 @@
 package com.sunnyweather.android.ui.place
 
+import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -15,6 +20,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.sunnyweather.android.R
+import com.sunnyweather.android.databinding.FragmentPlaceBinding
+import com.sunnyweather.android.ui.weather.WeatherActivity
 
 class PlaceFragment : Fragment() {
 
@@ -22,33 +29,45 @@ class PlaceFragment : Fragment() {
 
     private lateinit var adapter: PlaceAdapter
 
+    private var binding: FragmentPlaceBinding? = null
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        return inflater.inflate(R.layout.fragment_place, container, false)
+    ): View {
+        binding = FragmentPlaceBinding.inflate(inflater, container, false)
+        return binding!!.root
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
+
+        if (viewModel.isPlaceSaved()) {
+            val place = viewModel.getSavedPlace()
+            val intent = Intent(context, WeatherActivity::class.java).apply {
+                putExtra("location_lng", place.location.lng)
+                putExtra("location_lat", place.location.lat)
+                putExtra("place_name", place.name)
+            }
+            startActivity(intent)
+            activity?.finish()
+            return
+        }
+
         val layoutManager = LinearLayoutManager(activity)
-        val recyclerView: RecyclerView? = view?.findViewById(R.id.recyclerView)
-        val searchPlaceEdit: EditText? = view?.findViewById(R.id.searchPlaceEdit)
-        val bgImageView: ImageView? = view?.findViewById(R.id.bgImageView)
 
-        recyclerView?.layoutManager = layoutManager
+        binding?.recyclerView?.layoutManager = layoutManager
         adapter = PlaceAdapter(this, viewModel.placeList)
-        recyclerView?.adapter = adapter
+        binding?.recyclerView?.adapter = adapter
 
-        searchPlaceEdit?.addTextChangedListener { editable ->
+        binding?.searchPlaceEdit?.addTextChangedListener { editable ->
             val content = editable.toString()
-            Log.d("AAAAAAAAAA", content)
             if (content.isNotEmpty()) {
                 viewModel.searchPlaces(content)
             } else {
-                recyclerView?.visibility = View.GONE
-                bgImageView?.visibility = View.VISIBLE
+                binding?.recyclerView?.visibility = View.GONE
+                binding?.bgImageView?.visibility = View.VISIBLE
                 viewModel.placeList.clear()
                 adapter.notifyDataSetChanged()
             }
@@ -57,8 +76,8 @@ class PlaceFragment : Fragment() {
         viewModel.placeLiveData.observe(viewLifecycleOwner, Observer { result ->
             val places = result.getOrNull()
             if (places != null) {
-                recyclerView?.visibility = View.VISIBLE
-                bgImageView?.visibility = View.GONE
+                binding?.recyclerView?.visibility = View.VISIBLE
+                binding?.bgImageView?.visibility = View.GONE
                 viewModel.placeList.clear()
                 viewModel.placeList.addAll(places)
                 adapter.notifyDataSetChanged()
